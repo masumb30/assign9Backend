@@ -78,6 +78,58 @@ async function run() {
             }
         });
 
+        app.post('/login', async (req, res) => {
+            try {
+                const { email, password } = req.body;
+
+                // 1. Basic validation
+                if (!email || !password) {
+                    return res.status(400).json({ message: 'Email and password are required.' });
+                }
+
+                // 2. Find the user by email
+                const user = await usersCollection.findOne({ email: email.toLowerCase() });
+                if (!user) {
+                    return res.status(401).json({ message: 'Invalid email or password.' });
+                }
+
+                // 3. Verify the password using bcrypt
+                const isPasswordValid = await bcrypt.compare(password, user.password);
+                if (!isPasswordValid) {
+                    return res.status(401).json({ message: 'Invalid email or password.' });
+                }
+
+                // 4. Generate a JWT token
+                // Note: Make sure to add JWT_SECRET to your .env file (e.g., JWT_SECRET=your_super_secret_key)
+                const token = jwt.sign(
+                    { userId: user._getUniqueId, email: user.email, username: user.username },
+                    process.env.JWT_SECRET || 'fallback_secret_key',
+                    { expiresIn: '1h' } // Token expires in 1 hour
+                );
+
+                // 5. Send token and user data (excluding password) back to frontend
+                res.cookie('authToken', token, {
+                    httpOnly: true,
+                    secure: false,
+                    sameSite: 'lax',
+                    maxAge: 3600000
+                });
+                res.status(200).json({
+                    message: 'Login successful!',
+                    token,
+                    user: {
+                        id: user._id,
+                        username: user.username,
+                        email: user.email,
+                        photoUrl: user.photoUrl
+                    }
+                });
+
+            } catch (error) {
+                console.error('Login Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        });
 
 
     } finally {
