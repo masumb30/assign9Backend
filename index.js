@@ -3,6 +3,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const bcrypt = require('bcrypt');
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ async function run() {
         const usersCollection = database.collection("users");
 
         app.post('/signup', async (req, res) => {
+            console.log('hittig signup route')
             try {
                 const { username, email, password, photoUrl } = req.body;
 
@@ -51,12 +53,9 @@ async function run() {
                     return res.status(400).json({ message: 'Email is already registered.' });
                 }
 
-                // 4. Hash the password
-                // The salt rounds determine how cryptographically secure (and slow) the hashing is. 10-12 is standard.
                 const saltRounds = 10;
                 const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-                // 5. Prepare the user document
                 const newUser = {
                     username,
                     email: email.toLowerCase(),
@@ -64,10 +63,10 @@ async function run() {
                     photoUrl
                 };
 
-                // 6. Insert into MongoDB
                 const result = await usersCollection.insertOne(newUser);
 
-                // 7. Respond with success (excluding the password for safety)
+                console.log('result from signup', result);
+
                 res.status(201).json({
                     message: 'User registered successfully!',
                     userId: result.insertedId
@@ -83,7 +82,7 @@ async function run() {
 
     } finally {
         // Ensures that the client will close when you finish/error
-        await client.close();
+
     }
 }
 run().catch(console.dir);
