@@ -1,7 +1,7 @@
 
 const { SignJWT, jwtVerify, generateKeyPair, createRemoteJWKSet } = require('jose-cjs');
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -53,6 +53,7 @@ async function run() {
         const coffeeCollection = database.collection("ideas");
         const usersCollection = database.collection("user");
         const ideasCollection = database.collection("ideas");
+        const commentsCollection = database.collection("comments");
 
         app.post('/signup', async (req, res) => {
             console.log('hittig signup route')
@@ -184,13 +185,76 @@ async function run() {
             }
         })
 
-        app.get('/ideas/:id', verifyToken, async (req, res) => {
+        app.get('/ideas/:id', async (req, res) => {
+            console.log("running details orute: ", req.params.id)
             try {
                 const id = req.params.id;
                 const idea = await ideasCollection.findOne({ _id: new ObjectId(id) });
                 res.status(200).json(idea);
             } catch (error) {
                 console.error('Idea Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+
+        app.get('/comments/:ideaId', async (req, res) => {
+            try {
+                const ideaId = req.params.ideaId;
+                const comments = await commentsCollection.find({ ideaId: new ObjectId(ideaId) }).toArray();
+                res.status(200).json(comments);
+            } catch (error) {
+                console.error('Comment Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+
+        app.post('/comments/:ideaId', verifyToken, async (req, res) => {
+            try {
+                const ideaId = req.params.ideaId;
+                const comment = req.body;
+                console.log("idea id from post comment: ", ideaId)
+                console.log("comment from: ", comment);
+                const newComment = {
+                    ...comment,
+                    ideaId: new ObjectId(ideaId),
+                    authorId: req.user.id,
+                    author: req.user.name
+                };
+                const result = await commentsCollection.insertOne(newComment);
+                const comments = await commentsCollection.find({ ideaId: new ObjectId(ideaId) }).toArray();
+                res.status(201).json(comments);
+            } catch (error) {
+                console.error('Comment Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+
+        app.patch('/comments/:commentId/:ideaId', verifyToken, async (req, res) => {
+            try {
+                const commentId = req.params.commentId;
+                const ideaId = req.params.ideaId;
+                const comment = req.body;
+                console.log("comment id from patch comment: ", commentId)
+                console.log("idea id from patch comment: ", ideaId)
+                console.log("comment from patch comment: ", comment);
+                const result = await commentsCollection.updateOne({ _id: new ObjectId(commentId) }, { $set: comment });
+                const comments = await commentsCollection.find({ ideaId: new ObjectId(ideaId) }).toArray();
+                res.status(200).json(comments);
+            } catch (error) {
+                console.error('Comment Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+
+        app.delete('/comments/:commentId/:ideaId', verifyToken, async (req, res) => {
+            try {
+                const commentId = req.params.commentId;
+                const ideaId = req.params.ideaId;
+                const result = await commentsCollection.deleteOne({ _id: new ObjectId(commentId) });
+                const comments = await commentsCollection.find({ ideaId: new ObjectId(ideaId) }).toArray();
+                res.status(200).json(comments);
+            } catch (error) {
+                console.error('Comment Error:', error);
                 res.status(500).json({ message: 'Internal server error.' });
             }
         })
