@@ -35,8 +35,8 @@ async function verifyToken(req, res, next) {
         new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
     );
     const { payload } = await jwtVerify(token, JWKS, {
-        issuer: 'http://localhost:3000', // Should match your JWT issuer, which is the BASE_URL
-        audience: 'http://localhost:3000', // Should match your JWT audience, which is the BASE_URL by default
+        issuer: 'https://assign9frontend.vercel.app',
+        audience: 'https://assign9frontend.vercel.app', // Shou
     });
     console.log('payload: ', payload);
     req.user = payload;
@@ -342,26 +342,7 @@ app.get('/', (req, res) => {
     res.send('API is running...');
 });
 
-// GET Example: Fetch all items from a collection
-app.get('/items', async (req, res) => {
-    try {
-        const items = await db.collection('items').find({}).toArray();
-        res.status(200).json(items);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
-// POST Example: Add a new item to a collection
-app.post('/items', async (req, res) => {
-    try {
-        const newItem = req.body;
-        const result = await db.collection('items').insertOne(newItem);
-        res.status(201).json({ message: "Item added", id: result.insertedId });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 // Start Server and Connect to DB
 app.listen(port, async () => {
