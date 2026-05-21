@@ -1,9 +1,12 @@
 
+const { SignJWT, jwtVerify, generateKeyPair, createRemoteJWKSet } = require('jose-cjs');
+
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 dotenv.config();
 
@@ -12,6 +15,7 @@ const port = 5000;
 
 // Middleware to parse JSON
 app.use(express.json());
+app.use(cors());
 
 
 const uri = process.env.DATABASE_URL;
@@ -25,6 +29,21 @@ const client = new MongoClient(uri, {
     }
 });
 
+async function verifyToken(req, res, next) {
+    const token = req.headers.authorization.split(' ')[1];
+    const JWKS = createRemoteJWKSet(
+        new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+    );
+    const { payload } = await jwtVerify(token, JWKS, {
+        issuer: 'http://localhost:3000', // Should match your JWT issuer, which is the BASE_URL
+        audience: 'http://localhost:3000', // Should match your JWT audience, which is the BASE_URL by default
+    });
+    console.log('payload: ', payload);
+    req.user = payload;
+
+    next()
+}
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -32,7 +51,8 @@ async function run() {
         console.log("Connected to MongoDB");
         const database = client.db("ideavault");
         const coffeeCollection = database.collection("ideas");
-        const usersCollection = database.collection("users");
+        const usersCollection = database.collection("user");
+        const ideasCollection = database.collection("ideas");
 
         app.post('/signup', async (req, res) => {
             console.log('hittig signup route')
@@ -130,6 +150,28 @@ async function run() {
                 res.status(500).json({ message: 'Internal server error.' });
             }
         });
+
+        app.post('/ideas', verifyToken, async (req, res) => {
+            try {
+                const idea = req.body;
+                const userId = req.user.id;
+                const newIdea = {
+                    ...idea,
+                    userId
+                };
+                const result = await ideasCollection.insertOne(newIdea);
+                res.status(201).json({
+                    message: 'Idea added successfully!',
+                    ideaId: result.insertedId
+                });
+            } catch (error) {
+                console.error('Idea Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+
+
+
+        })
 
 
     } finally {
