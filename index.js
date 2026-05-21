@@ -157,7 +157,8 @@ async function run() {
                 const userId = req.user.id;
                 const newIdea = {
                     ...idea,
-                    userId
+                    authorId: userId,
+                    author: req.user.name
                 };
                 const result = await ideasCollection.insertOne(newIdea);
                 res.status(201).json({
@@ -171,7 +172,30 @@ async function run() {
 
 
 
+        });
+
+        app.get('/ideas', async (req, res) => {
+            try {
+                const ideas = await ideasCollection.find({}).limit(6).toArray();
+                res.status(200).json(ideas);
+            } catch (error) {
+                console.error('Idea Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
         })
+
+        app.get('/ideas/:id', verifyToken, async (req, res) => {
+            try {
+                const id = req.params.id;
+                const idea = await ideasCollection.findOne({ _id: new ObjectId(id) });
+                res.status(200).json(idea);
+            } catch (error) {
+                console.error('Idea Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+
+
 
 
     } finally {
