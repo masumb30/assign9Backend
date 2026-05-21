@@ -239,6 +239,8 @@ async function run() {
             }
         })
 
+
+
         app.post('/comments/:ideaId', verifyToken, async (req, res) => {
             try {
                 const ideaId = req.params.ideaId;
@@ -289,6 +291,31 @@ async function run() {
                 res.status(500).json({ message: 'Internal server error.' });
             }
         })
+
+        app.get('/interaction', verifyToken, async (req, res) => {
+            try {
+                const userId = req.user.id;
+                // 1. Get all comments for the user
+                const userComments = await commentsCollection.find({ authorId: userId }).toArray();
+
+                if (!userComments || userComments.length === 0) {
+                    return res.status(200).json([]);
+                }
+
+                // 2. Extract unique ideaId values
+                const ideaIds = [...new Set(userComments.map(comment => comment.ideaId.toString()))];
+
+                // 3. Fetch all those ideas
+                const objectIds = ideaIds.map(id => new ObjectId(id));
+                const interactions = await ideasCollection.find({ _id: { $in: objectIds } }).toArray();
+
+                res.status(200).json(interactions);
+            } catch (error) {
+                console.error('Interaction Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+
 
 
 
