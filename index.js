@@ -184,6 +184,15 @@ async function run() {
                 res.status(500).json({ message: 'Internal server error.' });
             }
         })
+        app.get('/allideas', async (req, res) => {
+            try {
+                const ideas = await ideasCollection.find({}).toArray();
+                res.status(200).json(ideas);
+            } catch (error) {
+                console.error('Idea Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
 
         app.get('/ideas/:id', async (req, res) => {
             console.log("running details orute: ", req.params.id)
