@@ -161,7 +161,7 @@ async function run() {
                     authorId: userId,
                     author: req.user.name
                 };
-                const result = await ideasCollection.insertOne(newIdea);
+                const result = await ideasCollection.insertOne({ ...newIdea, createdAt: new Date() });
                 res.status(201).json({
                     message: 'Idea added successfully!',
                     ideaId: result.insertedId
@@ -191,6 +191,37 @@ async function run() {
                 const id = req.params.id;
                 const idea = await ideasCollection.findOne({ _id: new ObjectId(id) });
                 res.status(200).json(idea);
+            } catch (error) {
+                console.error('Idea Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+        app.get('/myideas', verifyToken, async (req, res) => {
+            try {
+                const ideas = await ideasCollection.find({ authorId: req.user.id }).toArray();
+                res.status(200).json(ideas);
+            } catch (error) {
+                console.error('Idea Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+        app.delete('/ideas/:id', verifyToken, async (req, res) => {
+            try {
+                const id = req.params.id;
+                const result = await ideasCollection.deleteOne({ _id: new ObjectId(id) });
+                res.status(200).json(result);
+            } catch (error) {
+                console.error('Idea Error:', error);
+                res.status(500).json({ message: 'Internal server error.' });
+            }
+        })
+        app.patch('/ideas/:id', async (req, res) => {
+            console.log("running update idea orute: ", req.params.id)
+            try {
+                const id = req.params.id;
+                const idea = req.body;
+                const result = await ideasCollection.updateOne({ _id: new ObjectId(id) }, { $set: idea });
+                res.status(200).json(result);
             } catch (error) {
                 console.error('Idea Error:', error);
                 res.status(500).json({ message: 'Internal server error.' });
