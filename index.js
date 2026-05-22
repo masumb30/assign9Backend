@@ -29,15 +29,11 @@ const client = new MongoClient(uri, {
     }
 });
 
+const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`));
 async function verifyToken(req, res, next) {
     const token = req.headers.authorization.split(' ')[1];
-    const JWKS = createRemoteJWKSet(
-        new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
-    );
-    const { payload } = await jwtVerify(token, JWKS, {
-        issuer: 'https://assign9frontend.vercel.app',
-        audience: 'https://assign9frontend.vercel.app', // Shou
-    });
+
+    const { payload } = await jwtVerify(token, JWKS);
     console.log('payload: ', payload);
     req.user = payload;
 
@@ -176,8 +172,10 @@ async function run() {
         });
 
         app.get('/ideas', async (req, res) => {
+            console.log("trending ideas route hit")
             try {
                 const ideas = await ideasCollection.find({}).limit(6).toArray();
+                console.log("trending ideas: ", ideas)
                 res.status(200).json(ideas);
             } catch (error) {
                 console.error('Idea Error:', error);
@@ -238,9 +236,11 @@ async function run() {
         })
 
         app.get('/comments/:ideaId', async (req, res) => {
+            console.log("running comment route: ", req.params.ideaId)
             try {
                 const ideaId = req.params.ideaId;
                 const comments = await commentsCollection.find({ ideaId: new ObjectId(ideaId) }).toArray();
+                console.log("comments: ", comments)
                 res.status(200).json(comments);
             } catch (error) {
                 console.error('Comment Error:', error);
